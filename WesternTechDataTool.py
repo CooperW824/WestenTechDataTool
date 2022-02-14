@@ -1,5 +1,3 @@
-
-from ctypes import alignment
 import sys
 from PySide6 import QtWidgets, QtGui, QtCore, QtCharts
 import numpy as np
@@ -75,6 +73,7 @@ class GraphingWidget(QtWidgets.QWidget):
         self.layout = QtWidgets.QVBoxLayout(self)
         
         self.layout.addWidget(self._chart_view)
+        self.setLayout(self.layout)
 
 
 
@@ -97,6 +96,10 @@ class DataEntryWidget(QtWidgets.QWidget):
 
         self.chartType = QtWidgets.QComboBox().addItems(["Select Chart Type:", "Bar Chart", "Line Graph", "Scatter Plot", "Pie Chart", "Percentage Chart", "Temperature Graph"])
 
+        self.xAxis = AxisLabeler("X-Axis", True)
+        self.yAxis = AxisLabeler("Y-Axis", False)
+        self.chartTitle = AxisLabeler("Chart Title", False)
+
         self.layout = QtWidgets.QVBoxLayout()
         self.layout.addWidget(self.headerLabel)
 
@@ -109,7 +112,7 @@ class AxisLabeler(QtWidgets.QWidget):
     def __init__(self, axis_name: str, header_box: bool) -> None:
         super().__init__()
 
-        self.label = QtWidgets.QLabel("Enter the " + axis_name + "Graph Label and Select the Data Header: ")
+        self.label = QtWidgets.QLabel("Enter the " + axis_name + " Label Text" + " and Select the Data Header: "*int(header_box))
 
         self.textBox = QtWidgets.QInputDialog()
         self.textBox.setInputMode(QtWidgets.QInputDialog.TextInput)
@@ -125,15 +128,49 @@ class AxisLabeler(QtWidgets.QWidget):
 
         self.setLayout(self.layout)
 
-    def getAxisLabel(self):
+    def getAxisLabel(self) -> str:
         return self.textBox.getText()
 
-    def getAxisDataHeader(self):
+    def getAxisDataHeader(self)-> str:
         if(not self.header_box):
             return "n/a"
+        else:
+            return self.headerSelector.currentText()
 
     def setAxisDataHeaders(self, headers: list):
         self.headerSelector.addItems(headers)
+
+
+class SeriesSelector(QtWidgets.QWidget):
+
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.numSeries = 1
+        self.seriesDescriptors = [SeriesDescriptor(self.numSeries)]
+
+        self.layout = QtWidgets.QVBoxLayout()
+        self.layout.addItem(self.seriesDescriptors[-1])
+
+        self.setLayout(self.layout)
+
+
+class SeriesDescriptor(QtWidgets.QWidget):
+
+    def __init__(self, seriesNum) -> None:
+        super().__init__()
+
+        self.label = QtWidgets.QLabel("Series " + str(seriesNum) +": ")
+        self.nameInput = QtWidgets.QInputDialog()
+        self.nameInput.setInputMode(QtWidgets.QInputDialog.TextInput)
+        self.headerSelector = QtWidgets.QComboBox()
+
+        self.layout = QtWidgets.QHBoxLayout()
+        self.layout.addWidget(self.label)
+        self.layout.addWidget(self.nameInput)
+        self.layout.addWidget(self.headerSelector)
+
+        self.setLayout(self.layout)
             
 
 if __name__ == "__main__":
