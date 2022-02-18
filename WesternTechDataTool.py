@@ -100,8 +100,30 @@ class DataEntryWidget(QtWidgets.QWidget):
         self.yAxis = AxisLabeler("Y-Axis", False)
         self.chartTitle = AxisLabeler("Chart Title", False)
 
+        self.legend = SeriesSelector()
+
+        self.addSeriesButton = QtWidgets.QPushButton("Add New Series")
+        self.addSeriesButton.connect(self, QtWidgets.QPushButton.click(self.addSeriesButton), self.legend, self.legend.addSeriesDescriptor(self.legend.layout)) # i guarantee this wont work
+
+        self.regressionLabel = QtWidgets.QLabel("Regression Analysis (Line of Best Fit):")
+        self.regressionSelector = QtWidgets.QComboBox()
+        self.regressionSelector.addItems(["None", "Linear", "Quadratic", "Cubic", "Quartic", "Exponential", "Logistic", "Sinusoidal"])
+        
         self.layout = QtWidgets.QVBoxLayout()
         self.layout.addWidget(self.headerLabel)
+
+        self.layout.addWidget(self.selectionLabel)
+        self.layout.addWidget(self.fileSelector)
+        self.layout.addWidget(self.chartTypeLabel)
+        self.layout.addWidget(self.chartTypeLabel)
+        self.layout.addWidget(self.xAxis)
+        self.layout.addWidget(self.yAxis)
+        self.layout.addWidget(self.chartTitle)
+        self.layout.addWidget(self.legend)
+        self.layout.addWidget(self.addSeriesButton)
+        self.layout.addWidget(self.regressionLabel)
+        self.layout.addWidget(self.regressionSelector)
+
 
         self.setLayout(self.layout)
 
@@ -146,13 +168,20 @@ class SeriesSelector(QtWidgets.QWidget):
     def __init__(self) -> None:
         super().__init__()
 
+        self.layout = QtWidgets.QVBoxLayout()
         self.numSeries = 1
         self.seriesDescriptors = [SeriesDescriptor(self.numSeries)]
-
-        self.layout = QtWidgets.QVBoxLayout()
-        self.layout.addItem(self.seriesDescriptors[-1])
-
-        self.setLayout(self.layout)
+        
+        self.layout.addWidget(self.seriesDescriptors[0])
+       
+    
+    @QtCore.Slot(QtWidgets.QWidget)
+    def addSeriesDescriptor(self, layout: QtWidgets.QVBoxLayout):
+        self.numSeries+=1
+        descriptor = SeriesDescriptor(self.numSeries)
+        self.seriesDescriptors.append(descriptor)
+        layout.addWidget(descriptor)
+        
 
 
 class SeriesDescriptor(QtWidgets.QWidget):
@@ -171,6 +200,15 @@ class SeriesDescriptor(QtWidgets.QWidget):
         self.layout.addWidget(self.headerSelector)
 
         self.setLayout(self.layout)
+
+    def getAxisLabel(self) -> str:
+        return self.nameInput.getText()
+
+    def getAxisDataHeader(self)-> str:
+        return self.headerSelector.currentText()
+
+    def setAxisDataHeaders(self, headers: list) -> None:
+        self.headerSelector.addItems(headers)
             
 
 if __name__ == "__main__":
