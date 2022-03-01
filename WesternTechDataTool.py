@@ -1,6 +1,7 @@
+
 import sys
 from PySide6 import QtWidgets, QtGui, QtCore, QtCharts
-import numpy as np
+from PySide6.QtCore import Signal
 
 
 # # import the plotting backend for embeding into tk windows 
@@ -23,8 +24,9 @@ class Window():
         self.app = QtWidgets.QApplication(sys.argv)
         self.window = QtWidgets.QWidget()
 
-        self.window.resize(1000,800)
-        self.window.move(300,0)
+        screenSize = QtGui.QScreen.availableGeometry(QtWidgets.QApplication.primaryScreen())
+        self.window.resize(screenSize.width(),int(screenSize.height()*0.97))
+        self.window.move(0,0)
         
         self.window.setWindowTitle('Western Tech Data Science Tool')
         self.window.setWindowIcon(QtGui.QIcon("img/wtLogo.png"))
@@ -84,17 +86,27 @@ class DataEntryWidget(QtWidgets.QWidget):
     def __init__(self) -> None:
         super().__init__()
 
-        self.headerLabel =  QtWidgets.QLabel("Data Selection:" , alignment = QtCore.Qt.AlignCenter)
+        self.headerLabel =  QtWidgets.QLabel("Data Selection:", alignment = QtCore.Qt.AlignCenter)
+        self.headerLabel.setFixedHeight(20)
 
         self.selectionLabel = QtWidgets.QLabel("Select a Dataset from a File: (.csv, .tsv, or .xslx)", alignment = QtCore.Qt.AlignCenter)
+        self.selectionLabel.setFixedHeight(20)
+
+        self.fileSelectButton = QtWidgets.QPushButton("Select File")
 
         self.fileSelector = QtWidgets.QFileDialog(self)
         self.fileSelector.setFileMode(QtWidgets.QFileDialog.ExistingFile)
         self.fileSelector.setNameFilter("(*.csv, *.tsv, *.xslx)")
 
-        self.chartTypeLabel = QtWidgets.QLabel("Select Chart Type: ", alignment = QtCore.Qt.AlignCenter)
+        self.fileSelectButton.clicked.connect(self.selectFile)
 
-        self.chartType = QtWidgets.QComboBox().addItems(["Select Chart Type:", "Bar Chart", "Line Graph", "Scatter Plot", "Pie Chart", "Percentage Chart", "Temperature Graph"])
+        self.chartTypeLabel = QtWidgets.QLabel("Select Chart Type: ", alignment = QtCore.Qt.AlignCenter)
+        self.chartTypeLabel.setFixedHeight(20)
+        
+
+        self.chartType = QtWidgets.QComboBox()
+        self.chartType.addItems(["Select Chart Type:", "Bar Chart", "Line Graph", "Scatter Plot", "Pie Chart", "Percentage Chart", "Temperature Graph"])
+        self.setFixedWidth(400)
 
         self.xAxis = AxisLabeler("X-Axis", True)
         self.yAxis = AxisLabeler("Y-Axis", False)
@@ -103,19 +115,22 @@ class DataEntryWidget(QtWidgets.QWidget):
         self.legend = SeriesSelector()
 
         self.addSeriesButton = QtWidgets.QPushButton("Add New Series")
-        self.addSeriesButton.connect(self, QtWidgets.QPushButton.click(self.addSeriesButton), self.legend, self.legend.addSeriesDescriptor(self.legend.layout)) # i guarantee this wont work
+        self.addSeriesButton.clicked.connect(self.legend.addSeriesDescriptor)
 
         self.regressionLabel = QtWidgets.QLabel("Regression Analysis (Line of Best Fit):")
+        self.regressionLabel.setFixedHeight(20)
         self.regressionSelector = QtWidgets.QComboBox()
         self.regressionSelector.addItems(["None", "Linear", "Quadratic", "Cubic", "Quartic", "Exponential", "Logistic", "Sinusoidal"])
         
         self.layout = QtWidgets.QVBoxLayout()
+
         self.layout.addWidget(self.headerLabel)
 
         self.layout.addWidget(self.selectionLabel)
         self.layout.addWidget(self.fileSelector)
+        self.layout.addWidget(self.fileSelectButton)
         self.layout.addWidget(self.chartTypeLabel)
-        self.layout.addWidget(self.chartTypeLabel)
+        self.layout.addWidget(self.chartType)
         self.layout.addWidget(self.xAxis)
         self.layout.addWidget(self.yAxis)
         self.layout.addWidget(self.chartTitle)
@@ -127,6 +142,19 @@ class DataEntryWidget(QtWidgets.QWidget):
 
         self.setLayout(self.layout)
 
+        self.scroll = QtWidgets.QScrollArea()
+        #Scroll Area Properties
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setWidget(self)
+
+        
+
+
+    @QtCore.Slot()
+    def selectFile(self):
+        self.fileSelector.open()
+
+
 
 
 class AxisLabeler(QtWidgets.QWidget):
@@ -134,11 +162,14 @@ class AxisLabeler(QtWidgets.QWidget):
     def __init__(self, axis_name: str, header_box: bool) -> None:
         super().__init__()
 
-        self.label = QtWidgets.QLabel("Enter the " + axis_name + " Label Text" + " and Select the Data Header: "*int(header_box))
+        self.setMaximumHeight(60)
 
-        self.textBox = QtWidgets.QInputDialog()
-        self.textBox.setInputMode(QtWidgets.QInputDialog.TextInput)
-        self.layout = QtWidgets.QHBoxLayout()
+        self.label = QtWidgets.QLabel("Enter the " + axis_name + " Label Text" + " and Select the Data Header: "*int(header_box))
+        self.label.setMaximumHeight(30)
+
+        self.textBox = QtWidgets.QLineEdit()
+
+        self.layout = QtWidgets.QVBoxLayout()
         self.header_box = header_box
 
         self.layout.addWidget(self.label)
@@ -147,6 +178,7 @@ class AxisLabeler(QtWidgets.QWidget):
         if(header_box):
             self.headerSelector = QtWidgets.QComboBox()
             self.layout.addWidget(self.headerSelector)
+            self.setMaximumHeight(85)
 
         self.setLayout(self.layout)
 
@@ -173,14 +205,25 @@ class SeriesSelector(QtWidgets.QWidget):
         self.seriesDescriptors = [SeriesDescriptor(self.numSeries)]
         
         self.layout.addWidget(self.seriesDescriptors[0])
+        self.setLayout(self.layout)
        
     
-    @QtCore.Slot(QtWidgets.QWidget)
-    def addSeriesDescriptor(self, layout: QtWidgets.QVBoxLayout):
+    @QtCore.Slot()
+    def addSeriesDescriptor(self):
         self.numSeries+=1
-        descriptor = SeriesDescriptor(self.numSeries)
-        self.seriesDescriptors.append(descriptor)
-        layout.addWidget(descriptor)
+        msgBox = QtWidgets.QMessageBox()
+        msgBox.setText("You can only have up to 3 Series")
+        msgBox.setStandardButtons(QtWidgets.QMessageBox.Ok)
+        msgBox.setWindowTitle("Max Number of Series Reached")
+        msgBox.setWindowIcon(QtGui.QIcon("img/wtLogo.png"))
+        if self.numSeries < 4:
+            descriptor = SeriesDescriptor(self.numSeries)
+            self.seriesDescriptors.append(descriptor)
+            self.layout.addWidget(descriptor)
+        else:
+            
+            ret = msgBox.exec()
+
         
 
 
@@ -190,11 +233,11 @@ class SeriesDescriptor(QtWidgets.QWidget):
         super().__init__()
 
         self.label = QtWidgets.QLabel("Series " + str(seriesNum) +": ")
-        self.nameInput = QtWidgets.QInputDialog()
-        self.nameInput.setInputMode(QtWidgets.QInputDialog.TextInput)
+        self.label.setMaximumHeight(30)
+        self.nameInput = QtWidgets.QLineEdit()
         self.headerSelector = QtWidgets.QComboBox()
 
-        self.layout = QtWidgets.QHBoxLayout()
+        self.layout = QtWidgets.QVBoxLayout()
         self.layout.addWidget(self.label)
         self.layout.addWidget(self.nameInput)
         self.layout.addWidget(self.headerSelector)
