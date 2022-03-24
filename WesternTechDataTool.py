@@ -1,15 +1,8 @@
 
 import sys
 from PySide6 import QtWidgets, QtGui, QtCore, QtCharts
-from pyparsing import nums
+from matplotlib.pyplot import axis
 import dataset as ds
-
-
-# # import the plotting backend for embeding into tk windows 
-# from matplotlib.backends.backend_tkagg import FigureCanvasAgg 
-
-# -- Main Page Layout -- 
-
 
 class Window():
 
@@ -25,26 +18,50 @@ class Window():
         self.window.setWindowTitle('Western Tech Data Science Tool')
         self.window.setWindowIcon(QtGui.QIcon("img/wtLogo.png"))
 
+        self.mainComp = MainComponent()
+        self.graphBtn = QtWidgets.QPushButton("Generate Graph")
+        self.graphBtn.clicked.connect(self.graphData)
+        self.graphBtn.setMaximumHeight(20)
+
+        self.layout = QtWidgets.QVBoxLayout()
+        self.layout.addWidget(self.mainComp)
+        self.layout.addWidget(self.graphBtn)
+
+        self.window.setLayout(self.layout)
+        self.window.setWindowState(QtGui.Qt.WindowMaximized)
+        self.window.show()
+        sys.exit(self.app.exec())
+
+    @QtCore.Slot()
+    def graphData(self):
+        self.mainComp.graphData()
+
+#--Main Component Class -- 
+
+class MainComponent(QtWidgets.QWidget):
+    def __init__(self) -> None:
+        super().__init__()
         self.layout = QtWidgets.QHBoxLayout()
         self.data = DataEntryWidget()
         self.graph = GraphingWidget() 
 
         self.layout.addWidget(self.data)
         self.layout.addWidget(self.graph)
+        self.setLayout(self.layout)
 
-        self.window.setLayout(self.layout)
-        self.window.show()
-        sys.exit(self.app.exec())
-
-    @QtCore.Slot()
-    def sendGraphInfo(self):
-        axesInfo = self.data.getAxesInfo()
-        dataset = self.data.getDataset()
+    def graphData(self):
+        axisInfo = self.data.getAxesInfo()
         graphType = self.data.getGraphType()
+        dataset = self.data.getDataset()
+
+        x_data = dataset.getDataFromHeader(axisInfo[0][1])
+        series_data = []
+        for i in axisInfo[2]:
+            series_data.append([dataset.getDataFromHeader(i[1]), i[0]])
+
         if graphType == "Line Graph":
-            self.graph.buildLineChart()
-
-
+            self.graph.buildLineChart(x_data, series_data)
+            self.graph.setChartInfo(axisInfo[0][1], axisInfo[1], axisInfo[3])
 
 # -- Graphing Widget --
 
@@ -64,15 +81,15 @@ class GraphingWidget(QtWidgets.QWidget):
         self.layout.addWidget(self._chart_view)
         self.setLayout(self.layout)
 
-    def buildLineChart(self, x_axes: tuple, y_axes: tuple, seriesName: str):
-        self.chart.removeAxis(self.chart.axes(QtCore.Qt.Vertical, self.chart.series()[0]))
-        self.chart.removeAxis(self.chart.axes(QtCore.Qt.Horizontal, self.chart.series()[0]))
+    def buildLineChart(self, x_axes: list, y_axes: list):
+        # self.chart.removeAxis(self.chart.axes(QtCore.Qt.Vertical, self.chart.series()[0]))
+        # self.chart.removeAxis(self.chart.axes(QtCore.Qt.Horizontal, self.chart.series()[0]))
         
-        for i in range(0, len(x_axes)):
+        for i in range(0, len(y_axes)):
             series = QtCharts.QLineSeries()
-            series.setName(seriesName)
-            for j in range(0, len(x_axes[i])):
-                series.append(x_axes[i][j], y_axes[i][j])
+            series.setName(y_axes[i][1])
+            for j in range(0, len(y_axes[i])):
+                series.append(x_axes[j], y_axes[i][0][j])
             self.chart.addSeries(series)
 
         self.chart.createDefaultAxes()
@@ -115,7 +132,9 @@ class DataEntryWidget(QtWidgets.QWidget):
 
         self.xAxis = AxisLabeler("X-Axis", True)
         self.yAxis = AxisLabeler("Y-Axis", False)
+        self.yAxis.setMaximumHeight(60)
         self.chartTitle = AxisLabeler("Chart Title", False)
+        self.chartTitle.setMaximumHeight(60)
 
         self.legend = SeriesSelector()
 
@@ -127,13 +146,9 @@ class DataEntryWidget(QtWidgets.QWidget):
         self.regressionSelector = QtWidgets.QComboBox()
         self.regressionSelector.addItems(["None", "Linear", "Quadratic", "Cubic", "Quartic", "Exponential", "Logistic", "Sinusoidal"])
 
-        self.updateGraphBtn = QtWidgets.QPushButton("Update Graph")
-        self.updateGraphBtn.clicked.connect(Window.sendGraphInfo)
-        
         self.layout = QtWidgets.QVBoxLayout()
 
         self.layout.addWidget(self.headerLabel)
-
         self.layout.addWidget(self.selectionLabel)
         self.layout.addWidget(self.fileSelectButton)
         self.layout.addWidget(self.chartTypeLabel)
@@ -145,7 +160,6 @@ class DataEntryWidget(QtWidgets.QWidget):
         self.layout.addWidget(self.addSeriesButton)
         self.layout.addWidget(self.regressionLabel)
         self.layout.addWidget(self.regressionSelector)
-        self.layout.addWidget(self.updateGraphBtn)
 
         self.setLayout(self.layout)
 
@@ -163,24 +177,16 @@ class DataEntryWidget(QtWidgets.QWidget):
         self.legend.setSeriesDescriptorsHeaders(self.dataSet)
         self.legend.dataset = self.dataSet
 
-    def getAxesInfo(self) -> map:
-        axesInfo = {
-            "X-Axis": [],
-            "Y-Axis": [],
-            "Series 1": [],
-            "Series 2": [],
-            "Series 3": []
-        }
-        axesInfo["X-Axix"] = [self.xAxis.getAxisLabel(), self.xAxis.getAxisDataHeader()]
-        axesInfo["Y-Axis"] = [self.yAxis.getAxisLabel()]
+    def getAxesInfo(self):  
+        X_Axix = [self.xAxis.getAxisLabel(), self.xAxis.getAxisDataHeader()]
+        Y_Axis = self.yAxis.getAxisLabel()
         numSeries = 1
+        seriesInfo = []
         for i in self.legend.seriesDescriptors:
-            axesInfo["Series "+ str(numSeries)] = [i.getAxisLabel(), i.getAxisDataHeader()]
-            numSeries+=1
+             seriesInfo.append([i.getAxisLabel(), i.getAxisDataHeader()])
 
-        return axesInfo
+        return X_Axix, Y_Axis, seriesInfo, self.chartTitle.getAxisLabel()
         
-
     def getDataset(self)-> ds.Dataset:
         return self.dataSet
 
@@ -236,7 +242,9 @@ class SeriesSelector(QtWidgets.QWidget):
 
         self.layout = QtWidgets.QVBoxLayout()
         self.numSeries = 1
-        self.seriesDescriptors = [SeriesDescriptor(self.numSeries)]
+        descriptor = SeriesDescriptor(self.numSeries)
+        descriptor.setMaximumHeight(85)
+        self.seriesDescriptors = [descriptor]
         
         self.layout.addWidget(self.seriesDescriptors[0])
         self.setLayout(self.layout)
@@ -244,15 +252,16 @@ class SeriesSelector(QtWidgets.QWidget):
     
     @QtCore.Slot()
     def addSeriesDescriptor(self):
-        if self.numSeries < 4 and self.dataset != None:
+        if self.numSeries < 3 and self.dataset != None:
             self.numSeries+=1
             descriptor = SeriesDescriptor(self.numSeries)
+            descriptor.setMaximumHeight(85)
             self.seriesDescriptors.append(descriptor)
             descriptor.setAxisDataHeaders(self.dataset.getHeadersOfData())
             self.layout.addWidget(descriptor)
         else:
             msgBox = QtWidgets.QMessageBox()
-            if self.numSeries > 3:
+            if self.numSeries > 2:
                 msgBox.setText("You can only have up to 3 Series")
             else: 
                 msgBox.setText("Please select a Dataset First")
@@ -294,6 +303,7 @@ class SeriesDescriptor(QtWidgets.QWidget):
     def setAxisDataHeaders(self, headers: list) -> None:
         self.headerSelector.addItems(headers)
             
+            
+app = Window()
 
-if __name__ == "__main__":
-    app = Window()
+  
