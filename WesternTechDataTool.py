@@ -1,4 +1,5 @@
 
+from fileinput import filename
 import sys
 from PySide6 import QtWidgets, QtGui, QtCore, QtCharts
 from matplotlib.pyplot import axis
@@ -62,6 +63,22 @@ class MainComponent(QtWidgets.QWidget):
         if graphType == "Line Graph":
             self.graph.buildLineChart(x_data, series_data)
             self.graph.setChartInfo(axisInfo[0][1], axisInfo[1], axisInfo[3])
+        elif graphType == "Select Chart Type:":
+            msgBox = QtWidgets.QMessageBox()
+            msgBox.setText("Please Select a Chart Type")
+            msgBox.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            msgBox.setWindowTitle("Max Number of Series Reached")
+            msgBox.setWindowIcon(QtGui.QIcon("img/wtLogo.png"))
+            msgBox.exec()
+        else:
+            msgBox = QtWidgets.QMessageBox()
+            msgBox.setText("Sorry that graph type is not functional yet, but will be added very soon.")
+            msgBox.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            msgBox.setWindowTitle("Max Number of Series Reached")
+            msgBox.setWindowIcon(QtGui.QIcon("img/wtLogo.png"))
+            msgBox.exec()
+
+            
 
 # -- Graphing Widget --
 
@@ -82,19 +99,16 @@ class GraphingWidget(QtWidgets.QWidget):
         self.setLayout(self.layout)
 
     def buildLineChart(self, x_axes: list, y_axes: list):
-        # self.chart.removeAxis(self.chart.axes(QtCore.Qt.Vertical, self.chart.series()[0]))
-        # self.chart.removeAxis(self.chart.axes(QtCore.Qt.Horizontal, self.chart.series()[0]))
-        
+        self.chart.removeAllSeries()
+
         for i in range(0, len(y_axes)):
             series = QtCharts.QLineSeries()
             series.setName(y_axes[i][1])
-            for j in range(0, len(y_axes[i])):
+            for j in range(0, len(y_axes[i][0])):
                 series.append(x_axes[j], y_axes[i][0][j])
             self.chart.addSeries(series)
 
         self.chart.createDefaultAxes()
-        axes = self.chart.axes()
-        print(axes)
         
         
     
@@ -141,8 +155,8 @@ class DataEntryWidget(QtWidgets.QWidget):
         self.addSeriesButton = QtWidgets.QPushButton("Add New Series")
         self.addSeriesButton.clicked.connect(self.legend.addSeriesDescriptor)
 
-        self.regressionLabel = QtWidgets.QLabel("Regression Analysis (Line of Best Fit):")
-        self.regressionLabel.setFixedHeight(20)
+        self.regressionLabel = QtWidgets.QLabel("Regression Analysis (Line of Best Fit): \n(Warning: This is not implemented yet and does not work.)")
+        self.regressionLabel.setFixedHeight(40)
         self.regressionSelector = QtWidgets.QComboBox()
         self.regressionSelector.addItems(["None", "Linear", "Quadratic", "Cubic", "Quartic", "Exponential", "Logistic", "Sinusoidal"])
 
@@ -176,6 +190,11 @@ class DataEntryWidget(QtWidgets.QWidget):
         self.xAxis.setAxisDataHeaders(self.dataSet.getHeadersOfData())
         self.legend.setSeriesDescriptorsHeaders(self.dataSet)
         self.legend.dataset = self.dataSet
+        filename = self.filepath[0]
+        filename = filename.split("/")
+
+        self.selectionLabel.setText("File: " + filename[-1])
+        
 
     def getAxesInfo(self):  
         X_Axix = [self.xAxis.getAxisLabel(), self.xAxis.getAxisDataHeader()]
